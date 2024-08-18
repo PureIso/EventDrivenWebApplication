@@ -1,0 +1,6 @@
+@EventDrivenWebApplication_HostAddress = http://localhost:5244
+
+GET {{EventDrivenWebApplication_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
