@@ -1,4 +1,4 @@
-﻿namespace EventDrivenArchitecture.Inventory.Data;
+﻿namespace EventDrivenWebApplication.Inventory.API.Data;
 
 public class Product
 {

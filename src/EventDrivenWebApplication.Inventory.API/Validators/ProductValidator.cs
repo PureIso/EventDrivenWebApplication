@@ -1,7 +1,7 @@
-﻿using EventDrivenArchitecture.Inventory.Data;
+﻿using EventDrivenWebApplication.Inventory.API.Data;
 using FluentValidation;
 
-namespace EventDrivenArchitecture.Inventory.Validators;
+namespace EventDrivenWebApplication.Inventory.API.Validators;
 
 public class ProductValidator : AbstractValidator<Product>
 {

@@ -1,7 +1,7 @@
-﻿using EventDrivenArchitecture.Messaging.Contracts;
+﻿using EventDrivenWebApplication.Messaging.Contracts;
 using MassTransit;
 
-namespace EventDrivenArchitecture.Inventory.Consumer.Consumers;
+namespace EventDrivenWebApplication.Inventory.Consumer.Consumers;
 
 public class ProductCreatedConsumer : IConsumer<ProductCreated>
 {

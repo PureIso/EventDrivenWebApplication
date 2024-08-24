@@ -1,11 +1,11 @@
-﻿using EventDrivenArchitecture.Inventory.Data;
-using EventDrivenArchitecture.Messaging.Contracts;
+﻿using EventDrivenWebApplication.Inventory.API.Data;
+using EventDrivenWebApplication.Messaging.Contracts;
 using FluentValidation;
 using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace EventDrivenArchitecture.Inventory.Controllers;
+namespace EventDrivenWebApplication.Inventory.API.Controllers;
 
 [ApiController]
 [Route("[controller]")]
@@ -38,7 +38,7 @@ public class ProductController : ControllerBase
     public async Task<IActionResult> PostProduct([FromBody] Product product)
     {
         //Validate product
-        var validationResult = await _productValidator.ValidateAsync(product);
+        FluentValidation.Results.ValidationResult validationResult = await _productValidator.ValidateAsync(product);
         if (!validationResult.IsValid)
         {
             return BadRequest(validationResult.Errors);

@@ -1,11 +1,11 @@
-using EventDrivenArchitecture.Inventory.Data;
 using FluentValidation;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
+using EventDrivenWebApplication.Inventory.API.Data;
 
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder? builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddDbContext<ProductDBContext>(options => options.UseSqlite($"Data Source=product.db"));
@@ -17,7 +17,7 @@ builder.Services.AddMassTransit(options =>
 
     options.SetInMemorySagaRepositoryProvider();
 
-    var entryAssembly = Assembly.GetEntryAssembly();
+    Assembly? entryAssembly = Assembly.GetEntryAssembly();
     options.AddSagaStateMachines(entryAssembly);
     options.AddSagas(entryAssembly);
     options.AddActivities(entryAssembly);
@@ -44,13 +44,13 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var app = builder.Build();
+WebApplication? app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ProductDBContext>();
+    using IServiceScope? scope = app.Services.CreateScope();
+    ProductDBContext? dbContext = scope.ServiceProvider.GetRequiredService<ProductDBContext>();
     dbContext.Database.EnsureCreated();
 
     app.UseSwagger();

@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace EventDrivenArchitecture.Inventory.Data;
+namespace EventDrivenWebApplication.Inventory.API.Data;
 
 public class ProductDBContext : DbContext
 {

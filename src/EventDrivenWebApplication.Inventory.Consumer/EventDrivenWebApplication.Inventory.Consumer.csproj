@@ -15,6 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\EventDrivenArchitecture.Messaging.Contracts\EventDrivenArchitecture.Messaging.Contracts.csproj" />
+    <ProjectReference Include="..\EventDrivenWebApplication.Messaging.Contracts\EventDrivenWebApplication.Messaging.Contracts.csproj" />
   </ItemGroup>
 </Project>

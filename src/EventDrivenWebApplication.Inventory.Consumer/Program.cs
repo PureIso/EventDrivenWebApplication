@@ -1,7 +1,7 @@
 using MassTransit;
 using System.Reflection;
 
-var builder = Host.CreateApplicationBuilder(args);
+HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddMassTransit(options =>
 {
@@ -10,7 +10,7 @@ builder.Services.AddMassTransit(options =>
 
     options.SetInMemorySagaRepositoryProvider();
     //scan assembly for any implementation of IConsumer
-    var entryAssembly = Assembly.GetEntryAssembly();
+    Assembly? entryAssembly = Assembly.GetEntryAssembly();
     options.AddConsumers(entryAssembly);
 
     //https://www.youtube.com/watch?v=8_cvhomwmto&list=PLMZQrdYaj-DWUYo2eVGPBx268hQB7dPrl&index=4&ab_channel=codingFriday
@@ -29,5 +29,5 @@ builder.Services.AddMassTransit(options =>
     });
 });
 
-var host = builder.Build();
+IHost host = builder.Build();
 host.Run();

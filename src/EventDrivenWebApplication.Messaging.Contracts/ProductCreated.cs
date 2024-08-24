@@ -1,4 +1,4 @@
-﻿namespace EventDrivenArchitecture.Messaging.Contracts;
+﻿namespace EventDrivenWebApplication.Messaging.Contracts;
 
 public record ProductCreated
 {
