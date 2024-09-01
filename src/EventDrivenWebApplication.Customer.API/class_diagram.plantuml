@@ -1,0 +1,85 @@
+@startuml
+package "Domain" {
+    class Product {
+        +Id : int
+        +Name : string
+        +Price : decimal
+    }
+
+    class Customer {
+        +Id : int
+        +Name : string
+        +Email : string
+    }
+
+    interface IProductService {
+        +CreateProductAsync(product: Product) : Task
+    }
+
+    interface ICustomerService {
+        +RegisterCustomerAsync(customer: Customer) : Task
+    }
+
+    interface IProductCreated {
+        +ProductId : int
+        +Name : string
+        +Price : decimal
+        +CreatedAt : DateTime
+    }
+
+    interface ICustomerRegistered {
+        +CustomerId : int
+        +Name : string
+        +Email : string
+        +RegisteredAt : DateTime
+    }
+}
+
+package "API" {
+    class ProductController {
+        +CreateProduct(ProductDto) : IActionResult
+    }
+
+    class CustomerController {
+        +RegisterCustomer(CustomerDto) : IActionResult
+    }
+
+    class ProductCreatedConsumer {
+        +Consume(context: ConsumeContext<IProductCreated>) : Task
+    }
+}
+
+package "Infrastructure" {
+    class ProductDbContext {
+        +Products : DbSet<Product>
+    }
+
+    class CustomerDbContext {
+        +Customers : DbSet<Customer>
+    }
+
+    class ProductService {
+        +CreateProductAsync(product: Product) : Task
+    }
+
+    class CustomerService {
+        +RegisterCustomerAsync(customer: Customer) : Task
+    }
+
+    package "Messaging" {
+        class ProductCreated {
+            +ProductId : int
+            +Name : string
+            +Price : decimal
+            +CreatedAt : DateTime
+        }
+    }
+}
+
+ProductController --> IProductService : uses
+CustomerController --> ICustomerService : uses
+ProductService --> ProductDbContext : uses
+CustomerService --> CustomerDbContext : uses
+ProductService --> IProductCreated : publishes
+ProductCreatedConsumer --> IProductService : consumes
+ProductCreated -down-> IProductCreated : implements

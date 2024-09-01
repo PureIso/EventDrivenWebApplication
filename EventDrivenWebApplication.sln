@@ -3,13 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34525.116
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventDrivenWebApplication.Customer.API", "src/EventDrivenWebApplication.Customer.API\EventDrivenWebApplication.Customer.API.csproj", "{0A3A1642-F102-4AD8-A9FB-01568EFACA6C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventDrivenWebApplication.API", "src\EventDrivenWebApplication.Customer.API\EventDrivenWebApplication.API.csproj", "{0A3A1642-F102-4AD8-A9FB-01568EFACA6C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventDrivenWebApplication.Inventory.API", "src/EventDrivenWebApplication.Inventory.API\EventDrivenWebApplication.Inventory.API.csproj", "{E864C83F-2F5C-44E4-9EE5-74A10EAACE6F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventDrivenWebApplication.Infrastructure", "EventDrivenWebApplication.Infrastructure\EventDrivenWebApplication.Infrastructure.csproj", "{1A353027-11FC-4C9B-869B-99152BB0EC29}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventDrivenWebApplication.Inventory.Consumer", "src/EventDrivenWebApplication.Inventory.Consumer\EventDrivenWebApplication.Inventory.Consumer.csproj", "{7E020CE9-CF1E-4662-BECE-17202F8A1F6E}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventDrivenWebApplication.Messaging.Contracts", "src/EventDrivenWebApplication.Messaging.Contracts\EventDrivenWebApplication.Messaging.Contracts.csproj", "{7FE76ECA-84D8-46A9-B12B-EAD34829C5B0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventDrivenWebApplication.Domain", "EventDrivenWebApplicaation.Domain\EventDrivenWebApplication.Domain.csproj", "{E814327E-8184-4CDC-98FB-B8D060C93E3A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,18 +19,14 @@ Global
 		{0A3A1642-F102-4AD8-A9FB-01568EFACA6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0A3A1642-F102-4AD8-A9FB-01568EFACA6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0A3A1642-F102-4AD8-A9FB-01568EFACA6C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E864C83F-2F5C-44E4-9EE5-74A10EAACE6F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E864C83F-2F5C-44E4-9EE5-74A10EAACE6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E864C83F-2F5C-44E4-9EE5-74A10EAACE6F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E864C83F-2F5C-44E4-9EE5-74A10EAACE6F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7E020CE9-CF1E-4662-BECE-17202F8A1F6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7E020CE9-CF1E-4662-BECE-17202F8A1F6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7E020CE9-CF1E-4662-BECE-17202F8A1F6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7E020CE9-CF1E-4662-BECE-17202F8A1F6E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7FE76ECA-84D8-46A9-B12B-EAD34829C5B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7FE76ECA-84D8-46A9-B12B-EAD34829C5B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7FE76ECA-84D8-46A9-B12B-EAD34829C5B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7FE76ECA-84D8-46A9-B12B-EAD34829C5B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1A353027-11FC-4C9B-869B-99152BB0EC29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A353027-11FC-4C9B-869B-99152BB0EC29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A353027-11FC-4C9B-869B-99152BB0EC29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A353027-11FC-4C9B-869B-99152BB0EC29}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E814327E-8184-4CDC-98FB-B8D060C93E3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E814327E-8184-4CDC-98FB-B8D060C93E3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E814327E-8184-4CDC-98FB-B8D060C93E3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E814327E-8184-4CDC-98FB-B8D060C93E3A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

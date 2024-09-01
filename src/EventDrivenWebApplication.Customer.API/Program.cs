@@ -1,25 +1,41 @@
-using EventDrivenWebApplication.Customer.API.Data;
+using EventDrivenWebApplication.API.Configuration;
+using EventDrivenWebApplication.Domain.Interfaces;
+using EventDrivenWebApplication.Infrastructure.Data;
+using EventDrivenWebApplication.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
-WebApplicationBuilder? builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddDbContext<CustomerDBContext>(options => options.UseSqlite($"Data Source=customer.db"));
+
+// Register the ProductService as a dependency
+builder.Services.AddScoped<IProductService, ProductService>();
+
+// Register the database context
+builder.Services.AddDbContext<CustomerDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Register MassTransit with RabbitMQ configuration
+builder.Services.AddMassTransitWithRabbitMq(builder.Configuration["RabbitMqHost"]);
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
+// Add Swagger/OpenAPI support if needed
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-WebApplication? app = builder.Build();
+var app = builder.Build();
+
+// Ensure the database is created
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<CustomerDbContext>();
+    dbContext.Database.EnsureCreated();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    using IServiceScope? scope = app.Services.CreateScope();
-    CustomerDBContext? dbContext = scope.ServiceProvider.GetRequiredService<CustomerDBContext>();
-    dbContext.Database.EnsureCreated();
-
     app.UseSwagger();
     app.UseSwaggerUI();
 }
