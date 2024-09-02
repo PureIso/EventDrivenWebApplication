@@ -1,0 +1,52 @@
+services:
+  eventdrivenwebapplication.api:
+    image: ${DOCKER_REGISTRY-}eventdrivenwebapplicationapi
+    build:
+      context: .
+      dockerfile: docker/eventdrivenwebapplication.api/Dockerfile
+    container_name: eventdrivenwebapplication.api
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://0.0.0.0:8080;https://0.0.0.0:8081
+      ASPNETCORE_HTTPS_PORT: 8081
+      ConnectionStrings__ProductDb: Server=sqlserver;Database=ProductDb;User Id=sa;Password=YourStr0ngP@ssw0rd!;TrustServerCertificate=true;
+      ConnectionStrings__CustomerDb: Server=sqlserver;Database=CustomerDb;User Id=sa;Password=YourStr0ngP@ssw0rd!;TrustServerCertificate=true;
+      ConnectionStrings__InventoryDb: Server=sqlserver;Database=InventoryDb;User Id=sa;Password=YourStr0ngP@ssw0rd!;TrustServerCertificate=true;
+      RabbitMqHost: rabbitmq
+    depends_on:
+      - sqlserver
+      - rabbitmq
+    networks:
+      - app-network
+    restart: unless-stopped
+
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      SA_PASSWORD: "YourStr0ngP@ssw0rd!"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"  
+    networks:
+      - app-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    ports:
+      - "5672:5672"   # RabbitMQ client port
+      - "15672:15672" # RabbitMQ management console
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

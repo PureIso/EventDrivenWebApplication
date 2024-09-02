@@ -1,0 +1,105 @@
+@startuml
+
+package "EventDrivenWebApplication.API" {
+    class ProductController {
+        +GetProduct()
+        +CreateProduct()
+    }
+
+    class CustomerController {
+        +GetCustomer()
+        +CreateCustomer()
+    }
+
+    class InventoryController {
+        +GetInventory()
+    }
+
+    class ProductCreatedConsumer {
+        +Consume(ConsumeContext<ProductCreatedMessage>)
+    }
+}
+
+package "EventDrivenWebApplication.Domain" {
+    interface IProductService {
+        +GetProduct()
+        +CreateProduct()
+    }
+
+    interface ICustomerService {
+        +GetCustomer()
+        +CreateCustomer()
+    }
+
+    interface IInventoryService {
+        +GetInventory()
+        +AddProduct()
+    }
+
+    class Product {
+        +int Id
+        +Guid ProductId
+        +string Name
+        +int Quantity
+    }
+
+    class Customer {
+        +int Id
+        +Guid CustomerId
+        +string Name
+    }
+
+    class ProductCreatedMessage {
+        +int Id
+        +Guid ProductId
+        +string Name
+        +int Quantity
+    }
+}
+
+package "EventDrivenWebApplication.Infrastructure" {
+    class ProductService {
+        +GetProduct()
+        +CreateProduct()
+    }
+
+    class CustomerService {
+        +GetCustomer()
+        +CreateCustomer()
+    }
+
+    class InventoryService {
+        +GetInventory()
+        +AddProduct()
+    }
+
+    class CustomerDbContext {
+        +DbSet<Customer> Customers
+    }
+
+    class ProductDbContext {
+        +DbSet<Product> Products
+    }
+}
+
+ProductController --> IProductService : Uses
+CustomerController --> ICustomerService : Uses
+InventoryController --> IInventoryService : Uses
+
+ProductCreatedConsumer --> IProductService : Uses
+ProductCreatedConsumer --> ProductCreatedMessage : Consumes
+
+ProductService ..|> IProductService
+CustomerService ..|> ICustomerService
+InventoryService ..|> IInventoryService
+
+ProductService --> ProductDbContext : Uses
+CustomerService --> CustomerDbContext : Uses
+InventoryService --> ProductDbContext : Uses
+
+ProductDbContext --> Product : Contains
+CustomerDbContext --> Customer : Contains
+
+ProductCreatedMessage ..> Product : Derived from
+
+@enduml

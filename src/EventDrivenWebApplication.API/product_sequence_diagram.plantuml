@@ -1,0 +1,36 @@
+@startuml
+
+actor User
+participant "Product API" as ProductAPI
+participant "Product Service" as ProductService
+participant "Database" as Database
+participant "RabbitMQ" as RabbitMQ
+participant "ProductCreatedConsumer" as Consumer
+participant "Inventory Service" as InventoryService
+participant "Inventory API" as InventoryAPI
+
+User -> ProductAPI: POST /product
+ProductAPI -> ProductService: CreateProduct(Product)
+ProductService -> Database: Save(Product)
+Database --> ProductService: ProductCreated
+ProductService -> RabbitMQ: Publish(ProductCreatedMessage)
+RabbitMQ --> Consumer: Consume(ProductCreatedMessage)
+Consumer -> InventoryService: AddProductToInventory(ProductCreatedMessage)
+InventoryService -> Database: Save(Product)
+Database --> InventoryService: ProductSaved
+
+User -> InventoryAPI: GET /inventory/{productId}
+InventoryAPI -> InventoryService: GetInventory(ProductId)
+InventoryService -> Database: Fetch(Product)
+Database --> InventoryService: ProductData
+InventoryService --> InventoryAPI: ProductData
+InventoryAPI --> User: Return ProductData
+
+User -> ProductAPI: GET /product/{productId}
+ProductAPI -> ProductService: GetProduct(ProductId)
+ProductService -> Database: Fetch(Product)
+Database --> ProductService: ProductData
+ProductService --> ProductAPI: Return ProductData
+ProductAPI --> User: Return ProductData
+
+@enduml

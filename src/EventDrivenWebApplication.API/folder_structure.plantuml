@@ -1,0 +1,30 @@
+@startuml
+
+package "EventDrivenWebApplication.API" {
+    [ProductController] 
+    [CustomerController] 
+    [InventoryController] 
+    [ProductCreatedConsumer] 
+}
+
+package "EventDrivenWebApplication.Domain" {
+    [IProductService] 
+    [ICustomerService] 
+    [IInventoryService] 
+    [Product] 
+    [Customer] 
+    [ProductCreatedMessage] 
+}
+
+package "EventDrivenWebApplication.Infrastructure" {
+    [ProductService] 
+    [CustomerService] 
+    [InventoryService] 
+    [ProductDbContext] 
+    [CustomerDbContext] 
+}
+
+EventDrivenWebApplication.API --> EventDrivenWebApplication.Infrastructure : depends on
+EventDrivenWebApplication.Infrastructure --> EventDrivenWebApplication.Domain : depends on
+
+@enduml

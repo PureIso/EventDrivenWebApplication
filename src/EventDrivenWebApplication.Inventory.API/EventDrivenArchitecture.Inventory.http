@@ -1,6 +1,0 @@
-@EventDrivenArchitecture.Inventory_HostAddress = http://localhost:5198
-
-GET {{EventDrivenArchitecture.Inventory_HostAddress}}/products/
-Accept: application/json
-
-###
