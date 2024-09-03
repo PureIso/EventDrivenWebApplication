@@ -97,7 +97,7 @@ if (rabbitMqConfig != null)
 // Add Swagger for API documentation
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "School API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Event Driven Web Application API", Version = "v1" });
     string xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     string xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
