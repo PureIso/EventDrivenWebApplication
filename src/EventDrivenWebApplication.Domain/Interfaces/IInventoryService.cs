@@ -1,10 +1,10 @@
 ﻿using EventDrivenWebApplication.Domain.Entities;
 
-namespace EventDrivenWebApplication.Domain.Interfaces
+public interface IInventoryService
 {
-    public interface IInventoryService
-    {
-        Task AddProductToInventoryIfNotExistsAsync(Guid productId, string productName);
-        Task<IEnumerable<InventoryItem>> GetInventoryItemsAsync();
-    }
+    Task AddProductToInventoryIfNotExistsAsync(Guid productId, string productName);
+    Task UpdateInventoryAsync(Guid productId, int quantityChange, bool isChecked, DateTime? checkedAt);
+    Task<IEnumerable<InventoryItem>> GetInventoryItemsAsync();
+    Task<InventoryItem> GetInventoryItemAsync(Guid productId);
+    Task MarkItemCheckedAsync(Guid productId);
 }

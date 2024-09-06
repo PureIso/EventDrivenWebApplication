@@ -10,6 +10,7 @@ using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using EventDrivenWebApplication.Domain.Entities;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.Configuration.SetBasePath(Directory.GetCurrentDirectory());
@@ -51,6 +52,7 @@ builder.Services.AddApiVersioning(options =>
     options.SubstituteApiVersionInUrl = true;
 });
 
+// Register services
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
@@ -71,12 +73,15 @@ if (rabbitMqConfig != null)
     builder.Services.AddMassTransit(options =>
     {
         options.SetKebabCaseEndpointNameFormatter();
+
+        // Add consumers
         options.AddConsumer<ProductCreatedConsumer>();
-        //options.SetInMemorySagaRepositoryProvider();
-        //Assembly? entryAssembly = Assembly.GetEntryAssembly();
-        //options.AddSagaStateMachines(entryAssembly);
-        //options.AddSagas(entryAssembly);
-        //options.AddActivities(entryAssembly);
+        options.AddConsumer<InventoryCheckRequestedConsumer>();
+        options.AddConsumer<InventoryCheckCompletedConsumer>();
+
+        // Configure saga state machine
+        //options.AddSagaStateMachine<OrderStateMachine, OrderProcessState>()
+        //    .InMemoryRepository();
 
         options.UsingRabbitMq((context, config) =>
         {
@@ -85,10 +90,27 @@ if (rabbitMqConfig != null)
                 hostConfig.Username(rabbitMqConfig.Username);
                 hostConfig.Password(rabbitMqConfig.Password);
             });
-            //config.ConfigureEndpoints(context);
+
+            // Configure endpoints for consumers
             config.ReceiveEndpoint("product-created-queue", e =>
             {
                 e.ConfigureConsumer<ProductCreatedConsumer>(context);
+            });
+
+            config.ReceiveEndpoint("inventory-check-requested-queue", e =>
+            {
+                e.ConfigureConsumer<InventoryCheckRequestedConsumer>(context);
+            });
+
+            config.ReceiveEndpoint("inventory-check-completed-queue", e =>
+            {
+                e.ConfigureConsumer<InventoryCheckCompletedConsumer>(context);
+            });
+
+            // Configure saga
+            config.ReceiveEndpoint("order-process-saga", e =>
+            {
+                e.ConfigureSaga<OrderProcessState>(context);
             });
         });
     });
@@ -103,8 +125,8 @@ builder.Services.AddSwaggerGen(c =>
     if (File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
 });
 
-
 WebApplication app = builder.Build();
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
