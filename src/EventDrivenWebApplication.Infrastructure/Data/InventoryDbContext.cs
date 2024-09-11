@@ -11,4 +11,5 @@ public class InventoryDbContext : DbContext
     }
 
     public DbSet<InventoryItem> InventoryItems { get; set; }
+    public DbSet<InventoryCheckLog> InventoryCheckLogs { get; set; }
 }

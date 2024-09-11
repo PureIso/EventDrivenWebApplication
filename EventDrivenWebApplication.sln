@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventDrivenWebApplication.I
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventDrivenWebApplication.Domain", "src\EventDrivenWebApplication.Domain\EventDrivenWebApplication.Domain.csproj", "{E814327E-8184-4CDC-98FB-B8D060C93E3A}"
 EndProject
-Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{F83931EC-555B-4ABF-9970-3ED6055C2323}"
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose\docker-compose.dcproj", "{F83931EC-555B-4ABF-9970-3ED6055C2323}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C2D32FC2-8D48-4068-8571-3F2DECDAB429}"
 	ProjectSection(SolutionItems) = preProject

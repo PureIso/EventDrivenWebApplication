@@ -15,18 +15,17 @@ public class InventoryService : IInventoryService
 
     public async Task AddProductToInventoryIfNotExistsAsync(Guid productId, string productName)
     {
-        var existingProduct = await _dbContext.InventoryItems
+        InventoryItem? existingProduct = await _dbContext.InventoryItems
             .FirstOrDefaultAsync(p => p.ProductId == productId);
 
         if (existingProduct == null)
         {
-            var newInventoryItem = new InventoryItem
+            InventoryItem newInventoryItem = new InventoryItem
             {
                 ProductId = productId,
                 Name = productName,
                 Quantity = 0
             };
-
             _dbContext.InventoryItems.Add(newInventoryItem);
             await _dbContext.SaveChangesAsync();
         }
@@ -34,17 +33,17 @@ public class InventoryService : IInventoryService
 
     public async Task UpdateInventoryAsync(Guid productId, int quantityChange, bool isChecked, DateTime? checkedAt)
     {
-        var inventoryItem = await _dbContext.InventoryItems
+        InventoryItem? inventoryItem = await _dbContext.InventoryItems
             .FirstOrDefaultAsync(p => p.ProductId == productId);
 
-        if (inventoryItem == null)
-            throw new KeyNotFoundException("Inventory item not found.");
+        if (inventoryItem != null)
+        {
+            inventoryItem.Quantity += quantityChange;
+            inventoryItem.IsChecked = isChecked;
+            inventoryItem.LastCheckedAt = checkedAt;
 
-        inventoryItem.Quantity += quantityChange;
-        inventoryItem.IsChecked = isChecked;
-        inventoryItem.LastCheckedAt = checkedAt;
-
-        await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
+        }
     }
 
     public async Task<IEnumerable<InventoryItem>> GetInventoryItemsAsync()
@@ -52,28 +51,36 @@ public class InventoryService : IInventoryService
         return await _dbContext.InventoryItems.ToListAsync();
     }
 
-    public async Task<InventoryItem> GetInventoryItemAsync(Guid productId)
+    public async Task<InventoryItem?> GetInventoryItemAsync(Guid productId)
     {
-        var inventoryItem = await _dbContext.InventoryItems
+        InventoryItem? inventoryItem = await _dbContext.InventoryItems
             .FirstOrDefaultAsync(p => p.ProductId == productId);
-
-        if (inventoryItem == null)
-            throw new KeyNotFoundException("Inventory item not found.");
-
         return inventoryItem;
     }
 
     public async Task MarkItemCheckedAsync(Guid productId)
     {
-        var inventoryItem = await _dbContext.InventoryItems
+        InventoryItem? inventoryItem = await _dbContext.InventoryItems
             .FirstOrDefaultAsync(p => p.ProductId == productId);
+        if (inventoryItem != null)
+        {
+            inventoryItem.IsChecked = true;
+            inventoryItem.LastCheckedAt = DateTime.UtcNow;
+        }
+        await _dbContext.SaveChangesAsync();
+    }
 
-        if (inventoryItem == null)
-            throw new KeyNotFoundException("Inventory item not found.");
-
-        inventoryItem.IsChecked = true;
-        inventoryItem.LastCheckedAt = DateTime.UtcNow;
-
+    public async Task RecordInventoryCheckAsync(Guid productId, bool isAvailable, int totalUniqueItems, int totalQuantity)
+    {
+        InventoryCheckLog checkLog = new InventoryCheckLog
+        {
+            ProductId = productId,
+            TotalUniqueItems = totalUniqueItems,
+            TotalQuantity = totalQuantity,
+            IsAvailable = isAvailable,
+            CheckedAt = DateTime.UtcNow
+        };
+        _dbContext.InventoryCheckLogs.Add(checkLog);
         await _dbContext.SaveChangesAsync();
     }
 }

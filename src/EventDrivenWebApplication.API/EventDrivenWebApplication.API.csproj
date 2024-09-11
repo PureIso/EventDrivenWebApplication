@@ -9,6 +9,9 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..</DockerfileContext>
     <DockerComposeProjectPath>..\..\docker-compose.dcproj</DockerComposeProjectPath>
+    <DockerfileFile>..\..\docker\domaindrivenwebapplicationapi\Dockerfile</DockerfileFile>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <DockerfileRunArguments>-p "127.0.0.1:8080:8080" -p "127.0.0.1:8081:8081"</DockerfileRunArguments>
   </PropertyGroup>
 
   <ItemGroup>

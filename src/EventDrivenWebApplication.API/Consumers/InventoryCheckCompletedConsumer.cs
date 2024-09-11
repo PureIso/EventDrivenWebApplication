@@ -1,4 +1,5 @@
-﻿using MassTransit;
+﻿using EventDrivenWebApplication.Domain.Entities;
+using MassTransit;
 using EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
 
 namespace EventDrivenWebApplication.API.Consumers;
@@ -20,26 +21,29 @@ public class InventoryCheckCompletedConsumer : IConsumer<InventoryCheckCompleted
 
         try
         {
-            // Mark the inventory item as checked
-            await _inventoryService.MarkItemCheckedAsync(message.OrderId);
-
             _logger.LogInformation($"Inventory check completed for OrderId: {message.OrderId}, IsAvailable: {message.IsAvailable}");
 
-            if (message.IsAvailable)
+            // Mark item as checked
+            await _inventoryService.MarkItemCheckedAsync(message.ProductId);
+
+            // Fetch inventory items
+            IEnumerable<InventoryItem>? inventoryItems = await _inventoryService.GetInventoryItemsAsync();
+            IEnumerable<InventoryItem> enumerable = inventoryItems.ToList();
+            if (enumerable.Any())
             {
-                // Update inventory quantity if needed based on your business logic
-                // This may involve more actions or calling other services.
+                int uniqueItemsCount = enumerable.Count();
+                int totalQuantity = enumerable.Sum(item => item.Quantity);
+                await _inventoryService.RecordInventoryCheckAsync(message.ProductId, message.IsAvailable, uniqueItemsCount, totalQuantity);
             }
             else
             {
-                // Handle the case where the item is not available.
-                // This might include notifying the user or handling order rejection.
+                _logger.LogWarning("No inventory items found to calculate totals.");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing InventoryCheckCompleted message.");
-            throw; // Optional: rethrow exception or handle it as needed
+            _logger.LogError(ex, $"Error processing InventoryCheckCompleted message for OrderId: {message.OrderId}");
+            throw;
         }
     }
 }

@@ -27,6 +27,9 @@ public class ProductDbContext : DbContext
             .HasMaxLength(100);
 
         modelBuilder.Entity<Product>()
-            .Property(p => p.Price);
+            .Property(p => p.Price)
+            // Specify precision and scale for the Price property
+            // Precision 18, Scale 2 (for up to 999,999,999,999,999.99)
+            .HasPrecision(18, 2); 
     }
 }

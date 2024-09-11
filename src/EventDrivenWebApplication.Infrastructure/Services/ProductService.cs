@@ -39,7 +39,7 @@ public class ProductService : IProductService
         return product;
     }
 
-    public async Task<Product> GetProductByIdAsync(Guid productId)
+    public async Task<Product?> GetProductByIdAsync(Guid productId)
     {
         return await _dbContext.Products
                    .FirstOrDefaultAsync(p => p.ProductId == productId)

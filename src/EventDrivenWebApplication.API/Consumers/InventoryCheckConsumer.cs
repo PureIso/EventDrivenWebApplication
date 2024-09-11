@@ -1,52 +1,71 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using EventDrivenWebApplication.Domain.Entities;
 using MassTransit;
-using Microsoft.Extensions.Logging;
 using EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
 using EventDrivenWebApplication.Domain.Interfaces;
 
-namespace EventDrivenWebApplication.API.Consumers
+namespace EventDrivenWebApplication.API.Consumers;
+
+public class InventoryCheckRequestedConsumer : IConsumer<InventoryCheckRequested>
 {
-    public class InventoryCheckRequestedConsumer : IConsumer<InventoryCheckRequested>
+    private readonly IInventoryService _inventoryService;
+    private readonly IProductService _productService;
+    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly ILogger<InventoryCheckRequestedConsumer> _logger;
+
+    public InventoryCheckRequestedConsumer(
+        IInventoryService inventoryService,
+        IProductService productService,     // Injected ProductService
+        IPublishEndpoint publishEndpoint,
+        ILogger<InventoryCheckRequestedConsumer> logger)
     {
-        private readonly IInventoryService _inventoryService;
-        private readonly IPublishEndpoint _publishEndpoint;
-        private readonly ILogger<InventoryCheckRequestedConsumer> _logger;
+        _inventoryService = inventoryService;
+        _productService = productService;
+        _publishEndpoint = publishEndpoint;
+        _logger = logger;
+    }
 
-        public InventoryCheckRequestedConsumer(IInventoryService inventoryService, IPublishEndpoint publishEndpoint, ILogger<InventoryCheckRequestedConsumer> logger)
+    public async Task Consume(ConsumeContext<InventoryCheckRequested> context)
+    {
+        InventoryCheckRequested message = context.Message;
+
+        try
         {
-            _inventoryService = inventoryService;
-            _publishEndpoint = publishEndpoint;
-            _logger = logger;
+            // Fetch product details from ProductService
+            Product? product = await _productService.GetProductByIdAsync(message.ProductId);
+            if (product == null)
+            {
+                _logger.LogWarning($"Product with ProductId: {message.ProductId} does not exist in the product database.");
+                return;
+            }
+
+            // Fetch the item from inventory
+            InventoryItem? inventoryItem = await _inventoryService.GetInventoryItemAsync(message.ProductId);
+            bool isAvailable = false;
+            if (inventoryItem == null)
+            {
+                // Product does not exist in inventory, add it with the fetched product details
+                _logger.LogInformation($"ProductId: {message.ProductId} does not exist in inventory. Adding product to inventory.");
+                await _inventoryService.AddProductToInventoryIfNotExistsAsync(product.ProductId, product.Name);
+                inventoryItem = await _inventoryService.GetInventoryItemAsync(product.ProductId);
+            }
+            if (inventoryItem != null && inventoryItem.Quantity > 0)
+            {
+                isAvailable = true;
+            }
+            InventoryCheckCompleted inventoryCheckCompleted = new InventoryCheckCompleted
+            {
+                OrderId = message.OrderId,
+                ProductId = message.ProductId,
+                IsAvailable = isAvailable,
+                CheckedAt = DateTime.UtcNow
+            };
+            await _publishEndpoint.Publish(inventoryCheckCompleted);
+            _logger.LogInformation($"Published InventoryCheckCompleted for OrderId: {message.OrderId}, ProductId: {message.ProductId}, IsAvailable: {isAvailable}");
         }
-
-        public async Task Consume(ConsumeContext<InventoryCheckRequested> context)
+        catch (Exception ex)
         {
-            var message = context.Message;
-
-            try
-            {
-                // Fetch the item from inventory
-                var inventoryItem = await _inventoryService.GetInventoryItemAsync(message.ProductId);
-
-                bool isAvailable = inventoryItem != null && inventoryItem.Quantity >= message.Quantity;
-
-                // Send InventoryCheckCompleted message
-                var inventoryCheckCompleted = new InventoryCheckCompleted
-                {
-                    OrderId = message.OrderId,
-                    IsAvailable = isAvailable
-                };
-
-                await _publishEndpoint.Publish(inventoryCheckCompleted);
-
-                _logger.LogInformation($"Inventory check requested for OrderId: {message.OrderId}, ProductId: {message.ProductId}, Quantity: {message.Quantity}, IsAvailable: {isAvailable}");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing InventoryCheckRequested message.");
-                throw; // Optional: rethrow exception or handle it as needed
-            }
+            _logger.LogError(ex, "Error processing InventoryCheckRequested message.");
+            throw; // Optional: rethrow exception or handle it as needed
         }
     }
 }

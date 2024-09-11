@@ -1,29 +1,31 @@
-﻿using EventDrivenWebApplication.Domain.Interfaces;
-using EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
+﻿using EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
 using MassTransit;
 
 namespace EventDrivenWebApplication.API.Consumers;
 
 public class ProductCreatedConsumer : IConsumer<ProductCreatedMessage>
 {
-    private readonly IInventoryService _inventoryService;
+    private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<ProductCreatedConsumer> _logger;
 
-    public ProductCreatedConsumer(IInventoryService inventoryService, ILogger<ProductCreatedConsumer> logger)
+    public ProductCreatedConsumer(IPublishEndpoint publishEndpoint, ILogger<ProductCreatedConsumer> logger)
     {
-        _inventoryService = inventoryService;
+        _publishEndpoint = publishEndpoint;
         _logger = logger;
     }
 
     public async Task Consume(ConsumeContext<ProductCreatedMessage> context)
     {
         ProductCreatedMessage message = context.Message;
-
-        _logger.LogInformation("Received ProductCreatedMessage: {ProductId}, {Name}", message.ProductId, message.Name);
-
-        // Check if the product exists in inventory; if not, add it
-        await _inventoryService.AddProductToInventoryIfNotExistsAsync(message.ProductId, message.Name);
-
-        _logger.LogInformation("Processed ProductCreatedMessage for ProductId: {ProductId}", message.ProductId);
+        _logger.LogInformation("Received ProductCreatedMessage: {ProductId}, {Name}, {Quantity}", message.ProductId, message.Name, message.Quantity);
+        // Request an inventory check
+        InventoryCheckRequested inventoryCheckRequested = new InventoryCheckRequested
+        {
+            OrderId = Guid.NewGuid(),
+            ProductId = message.ProductId,
+            Quantity = message.Quantity
+        };
+        await _publishEndpoint.Publish(inventoryCheckRequested);
+        _logger.LogInformation("Published InventoryCheckRequested for ProductId: {ProductId}, Quantity: {Quantity}", message.ProductId, message.Quantity);
     }
 }

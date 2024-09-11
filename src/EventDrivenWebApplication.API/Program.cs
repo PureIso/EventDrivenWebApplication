@@ -11,37 +11,38 @@ using Asp.Versioning;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using EventDrivenWebApplication.Domain.Entities;
+using EventDrivenWebApplication.Infrastructure.Sagas;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-builder.Configuration.SetBasePath(Directory.GetCurrentDirectory());
-builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-builder.Configuration.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true);
-builder.Configuration.AddEnvironmentVariables();
 
 Log.Logger = new LoggerConfiguration()
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Environment", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production")
     .WriteTo.Console()
     .CreateLogger();
+
 builder.Host.UseSerilog();
 
+// Check if running in Docker
 if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Docker")
 {
     builder.Configuration.AddUserSecrets<Program>();
     builder.Configuration.AddEnvironmentVariables();
 }
 
+// Configure JSON serialization options
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.PropertyNamingPolicy = null;                      // Keep property names as-is (default camelCase)
-        options.JsonSerializerOptions.WriteIndented = true;                             // Format JSON responses with indentation
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());    // Serialize enums as strings
+        options.JsonSerializerOptions.PropertyNamingPolicy = null;
+        options.JsonSerializerOptions.WriteIndented = true;
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
 builder.Services.AddApiVersioning(options =>
 {
-    // Specify the default API version
     options.DefaultApiVersion = new ApiVersion(1, 0);
     options.AssumeDefaultVersionWhenUnspecified = true;
     options.ReportApiVersions = true;
@@ -56,6 +57,8 @@ builder.Services.AddApiVersioning(options =>
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<ISagaManagementService, SagaManagementService>();
+
 
 // Register the database contexts
 builder.Services.AddDbContext<ProductDbContext>(options =>
@@ -66,6 +69,9 @@ builder.Services.AddDbContext<CustomerDbContext>(options =>
 
 builder.Services.AddDbContext<InventoryDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("InventoryDb")));
+
+builder.Services.AddDbContext<OrderSagaDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("OrderSagaStateDb")));
 
 RabbitMQConfig? rabbitMqConfig = builder.Configuration.GetSection("MassTransit:RabbitMQ").Get<RabbitMQConfig>();
 if (rabbitMqConfig != null)
@@ -79,9 +85,13 @@ if (rabbitMqConfig != null)
         options.AddConsumer<InventoryCheckRequestedConsumer>();
         options.AddConsumer<InventoryCheckCompletedConsumer>();
 
-        // Configure saga state machine
-        //options.AddSagaStateMachine<OrderStateMachine, OrderProcessState>()
-        //    .InMemoryRepository();
+        options.AddSagaStateMachine<OrderProcessStateMachine, OrderProcessState>()
+            .EntityFrameworkRepository(r => 
+            {
+                r.ConcurrencyMode = ConcurrencyMode.Pessimistic;
+                r.ExistingDbContext<OrderSagaDbContext>();
+                r.UseSqlServer();
+            });
 
         options.UsingRabbitMq((context, config) =>
         {
@@ -107,7 +117,6 @@ if (rabbitMqConfig != null)
                 e.ConfigureConsumer<InventoryCheckCompletedConsumer>(context);
             });
 
-            // Configure saga
             config.ReceiveEndpoint("order-process-saga", e =>
             {
                 e.ConfigureSaga<OrderProcessState>(context);
@@ -125,11 +134,22 @@ builder.Services.AddSwaggerGen(c =>
     if (File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
+
 WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || builder.Environment.EnvironmentName == "Docker")
 {
+    app.UseCors("AllowAll");
     app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Event Driven Web Application API v1"));
@@ -137,12 +157,11 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthorization();
-
 app.MapControllers();
 
 // Ensure the databases are created
@@ -156,6 +175,29 @@ using (IServiceScope scope = app.Services.CreateScope())
 
     InventoryDbContext inventoryDbContext = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
     inventoryDbContext.Database.EnsureCreated();
+
+    OrderSagaDbContext orderSagaDbContext = scope.ServiceProvider.GetRequiredService<OrderSagaDbContext>();
+    orderSagaDbContext.Database.EnsureCreated();
 }
+
+// Logging Kestrel and HTTPS certificate information
+ILogger<Program> logger = app.Services.GetRequiredService<ILogger<Program>>();
+IServer server = app.Services.GetRequiredService<IServer>();
+ICollection<string>? addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
+
+if (addresses != null && addresses.Any())
+{
+    foreach (string address in addresses)
+    {
+        logger.LogInformation("Kestrel is listening on: {Address}", address);
+    }
+}
+else
+{
+    logger.LogInformation("Kestrel addresses are empty.");
+}
+
+// Log application startup
+logger.LogInformation("Application has started successfully.");
 
 app.Run();
