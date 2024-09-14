@@ -11,7 +11,6 @@ using Asp.Versioning;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using EventDrivenWebApplication.Domain.Entities;
-using EventDrivenWebApplication.Infrastructure.Sagas;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 
@@ -73,26 +72,29 @@ builder.Services.AddDbContext<InventoryDbContext>(options =>
 builder.Services.AddDbContext<OrderSagaDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("OrderSagaStateDb")));
 
-RabbitMQConfig? rabbitMqConfig = builder.Configuration.GetSection("MassTransit:RabbitMQ").Get<RabbitMQConfig>();
+RabbitMqConfig? rabbitMqConfig = builder.Configuration.GetSection("MassTransit:RabbitMQ").Get<RabbitMqConfig>();
 if (rabbitMqConfig != null)
 {
     builder.Services.AddMassTransit(options =>
     {
+        // Use KebabCase for endpoint names
         options.SetKebabCaseEndpointNameFormatter();
 
-        // Add consumers
+        // Add consumers for the events
         options.AddConsumer<ProductCreatedConsumer>();
         options.AddConsumer<InventoryCheckRequestedConsumer>();
         options.AddConsumer<InventoryCheckCompletedConsumer>();
 
+        // Configure the Saga state machine
         options.AddSagaStateMachine<OrderProcessStateMachine, OrderProcessState>()
-            .EntityFrameworkRepository(r => 
+            .EntityFrameworkRepository(r =>
             {
                 r.ConcurrencyMode = ConcurrencyMode.Pessimistic;
-                r.ExistingDbContext<OrderSagaDbContext>();
-                r.UseSqlServer();
+                r.ExistingDbContext<OrderSagaDbContext>(); // Ensure this points to the correct DbContext
+                r.UseSqlServer(); // Use SQL Server for saga persistence
             });
 
+        // RabbitMQ configuration
         options.UsingRabbitMq((context, config) =>
         {
             config.Host(new Uri($"rabbitmq://{rabbitMqConfig.Host}:{rabbitMqConfig.Port}/"), hostConfig =>
@@ -101,7 +103,7 @@ if (rabbitMqConfig != null)
                 hostConfig.Password(rabbitMqConfig.Password);
             });
 
-            // Configure endpoints for consumers
+            // Configure consumers and queues
             config.ReceiveEndpoint("product-created-queue", e =>
             {
                 e.ConfigureConsumer<ProductCreatedConsumer>(context);
@@ -117,6 +119,7 @@ if (rabbitMqConfig != null)
                 e.ConfigureConsumer<InventoryCheckCompletedConsumer>(context);
             });
 
+            // Configure saga state machine endpoint
             config.ReceiveEndpoint("order-process-saga", e =>
             {
                 e.ConfigureSaga<OrderProcessState>(context);
@@ -124,6 +127,7 @@ if (rabbitMqConfig != null)
         });
     });
 }
+
 
 // Add Swagger for API documentation
 builder.Services.AddSwaggerGen(c =>

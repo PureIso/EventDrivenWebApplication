@@ -7,69 +7,78 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EventDrivenWebApplication.Infrastructure.Services;
 
+/// <summary>
+/// Service for managing product-related operations.
+/// </summary>
 public class ProductService : IProductService
 {
     private readonly ProductDbContext _dbContext;
     private readonly IPublishEndpoint _publishEndpoint;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ProductService"/> class.
+    /// </summary>
+    /// <param name="dbContext">The database context for products.</param>
+    /// <param name="publishEndpoint">The publish endpoint for sending messages.</param>
     public ProductService(ProductDbContext dbContext, IPublishEndpoint publishEndpoint)
     {
         _dbContext = dbContext;
         _publishEndpoint = publishEndpoint;
     }
 
-    public async Task<Product> CreateProductAsync(Product product)
+    /// <inheritdoc/>
+    public async Task<Product> CreateProductAsync(Product product, CancellationToken cancellationToken)
     {
-        product.ProductId = Guid.NewGuid();
-
-        await _dbContext.Products.AddAsync(product);
-        await _dbContext.SaveChangesAsync();
-
+        product.CorrelationId = Guid.NewGuid();
+        product.Id = 0;
+        // Add product to the database
+        await _dbContext.Products.AddAsync(product, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        // Publish product created event
         ProductCreatedMessage productCreatedMessage = new ProductCreatedMessage
         {
-            ProductId = product.ProductId,
+            CorrelationId = product.CorrelationId.Value,
+            ProductId = product.Id,
             Name = product.Name,
             Quantity = product.Quantity,
             Price = product.Price,
-            CreatedAt = DateTime.UtcNow
+            DateTimeCreated = DateTime.UtcNow
         };
 
-        await _publishEndpoint.Publish(productCreatedMessage);
-
+        await _publishEndpoint.Publish(productCreatedMessage, cancellationToken);
         return product;
     }
 
-    public async Task<Product?> GetProductByIdAsync(Guid productId)
+    /// <inheritdoc/>
+    public async Task<Product?> GetProductByIdAsync(int productId, CancellationToken cancellationToken)
     {
         return await _dbContext.Products
-                   .FirstOrDefaultAsync(p => p.ProductId == productId)
-               ?? throw new KeyNotFoundException("Product not found.");
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
     }
 
-    public async Task UpdateProductAsync(Product product)
+    /// <inheritdoc/>
+    public async Task UpdateProductAsync(Product product, CancellationToken cancellationToken)
     {
         Product? existingProduct = await _dbContext.Products
-            .FirstOrDefaultAsync(p => p.ProductId == product.ProductId);
-
+            .FirstOrDefaultAsync(p => p.Id == product.Id, cancellationToken);
         if (existingProduct == null)
-            throw new KeyNotFoundException("Product not found.");
-
+            return;
         existingProduct.Name = product.Name;
         existingProduct.Quantity = product.Quantity;
         existingProduct.Price = product.Price;
-
-        await _dbContext.SaveChangesAsync();
+        existingProduct.DateTimeLastModified = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task DeleteProductAsync(Guid productId)
+    /// <inheritdoc/>
+    public async Task DeleteProductAsync(int productId, CancellationToken cancellationToken)
     {
         Product? product = await _dbContext.Products
-            .FirstOrDefaultAsync(p => p.ProductId == productId);
-
+            .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
         if (product == null)
-            throw new KeyNotFoundException("Product not found.");
-
+            return;
         _dbContext.Products.Remove(product);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

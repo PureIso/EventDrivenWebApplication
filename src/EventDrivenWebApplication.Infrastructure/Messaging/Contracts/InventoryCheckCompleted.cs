@@ -2,9 +2,9 @@
 
 public class InventoryCheckCompleted
 {
-    public Guid OrderId { get; set; }
-    public Guid ProductId { get; set; } 
-    public bool IsAvailable { get; set; }
-    public int QuantityAvailable { get; set; }
-    public DateTime CheckedAt { get; set; } = DateTime.UtcNow;
+    public Guid CorrelationId { get; set; }
+    public int InventoryItemId { get; set; }
+    public int ProductId { get; set; }
+    public bool IsQualityGood { get; set; }
+    public DateTime DateTimeInventoryCompleted { get; set; } = DateTime.UtcNow;
 }

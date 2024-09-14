@@ -1,21 +1,17 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using EventDrivenWebApplication.Domain.Entities;
-using EventDrivenWebApplication.Infrastructure.Sagas;
 
 namespace EventDrivenWebApplication.Infrastructure.Data;
 
 public class OrderSagaDbContext : DbContext
 {
-    private readonly OrderProcessStateMachine _stateMachine;
-
-    // Inject the state machine into the DbContext
-    public OrderSagaDbContext(DbContextOptions<OrderSagaDbContext> options, OrderProcessStateMachine stateMachine)
+    // Inject state machine and DbContext options
+    public OrderSagaDbContext(DbContextOptions<OrderSagaDbContext> options)
         : base(options)
     {
-        _stateMachine = stateMachine;
     }
 
-    public DbSet<OrderProcessState> OrderProcessStates { get; set; }
+    public DbSet<OrderProcessState> OrderProcessStates { get; set; } = default!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -31,27 +27,37 @@ public class OrderSagaDbContext : DbContext
             entity.Property(x => x.CorrelationId)
                 .IsRequired();
 
-            entity.Property(x => x.OrderId)
-                .IsRequired();
-
             entity.Property(x => x.ProductId)
                 .IsRequired();
 
-            entity.Property(x => x.IsInventoryAvailable)
+            entity.Property(x => x.ProductName)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(x => x.ProductQuantity)
                 .IsRequired();
 
-            entity.Property(x => x.IsInventoryChecked)
+            entity.Property(x => x.Price)
+                .IsRequired()
+                .HasPrecision(18, 2);
+
+            entity.Property(x => x.IsQualityGood)
                 .IsRequired();
 
-            entity.Property(x => x.InventoryCheckedAt)
+            entity.Property(x => x.DateTimeProductCreated)
+                .IsRequired()
                 .HasColumnType("datetime");
 
-            // Store MassTransit.State as a string (State.Name)
+            entity.Property(x => x.DateTimeInventoryCheckRequested)
+                .IsRequired()
+                .HasColumnType("datetime");
+
+            entity.Property(x => x.DateTimeInventoryCheckCompleted)
+                .IsRequired()
+                .HasColumnType("datetime");
+
+            // Store CurrentState as an integer
             entity.Property(x => x.CurrentState)
-                .HasConversion(
-                    state => state.Name,
-                    name => _stateMachine.GetState(name)
-                )
                 .IsRequired();
 
             // Configure RowVersion for concurrency control

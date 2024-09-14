@@ -3,33 +3,65 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EventDrivenWebApplication.Infrastructure.Data;
 
+/// <summary>
+/// DbContext for managing product entities.
+/// </summary>
 public class ProductDbContext : DbContext
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ProductDbContext"/> class.
+    /// </summary>
+    /// <param name="options">The options for the DbContext.</param>
     public ProductDbContext(DbContextOptions<ProductDbContext> options)
-    : base(options)
+        : base(options)
     {
     }
 
+    /// <summary>
+    /// Gets or sets the DbSet of products.
+    /// </summary>
     public DbSet<Product> Products { get; set; } = default!;
 
+    /// <summary>
+    /// Configures the entity models and relationships for the DbContext.
+    /// </summary>
+    /// <param name="modelBuilder">The model builder used to configure the model.</param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Product>()
-            .HasKey(p => p.Id);
+        modelBuilder.Entity<Product>(entity =>
+        {
+            // Set primary key and configure Id as auto-generated
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.Id)
+                .ValueGeneratedOnAdd();
 
-        modelBuilder.Entity<Product>()
-            .HasIndex(p => p.ProductId)
-            .IsUnique();
+            // Configure unique constraint for CorrelationId
+            entity.HasIndex(p => p.CorrelationId)
+                .IsUnique();
 
-        modelBuilder.Entity<Product>()
-            .Property(p => p.Name)
-            .IsRequired()
-            .HasMaxLength(100);
+            // Configure unique constraint for Name
+            entity.HasIndex(p => p.Name)
+                .IsUnique();
 
-        modelBuilder.Entity<Product>()
-            .Property(p => p.Price)
-            // Specify precision and scale for the Price property
-            // Precision 18, Scale 2 (for up to 999,999,999,999,999.99)
-            .HasPrecision(18, 2); 
+            entity.Property(p => p.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(p => p.Quantity)
+                .HasDefaultValue(0)
+                .HasAnnotation("Range", new { Min = 0, Max = int.MaxValue });
+
+            entity.Property(p => p.Price)
+                .HasPrecision(18, 2)
+                .HasAnnotation("Range", new { Min = 0.0m, Max = double.MaxValue });
+
+            entity.Property(p => p.DateTimeCreated)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()");
+
+            entity.Property(p => p.DateTimeLastModified)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()");
+        });
     }
 }

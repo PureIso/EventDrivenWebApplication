@@ -2,12 +2,11 @@
 
 public class ProductCreatedMessage
 {
-    //Unique identifier for saga correlation
+    // CorrelationId used by the state machine
     public Guid CorrelationId { get; set; }
-    public Guid ProductId { get; set; }
+    public int ProductId { get; set; }
     public string Name { get; set; } = default!;
     public int Quantity { get; set; }
     public decimal Price { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public Guid OrderId { get; set; }
+    public DateTime DateTimeCreated { get; set; } = DateTime.UtcNow;
 }

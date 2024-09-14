@@ -1,6 +1,6 @@
 ﻿namespace EventDrivenWebApplication.API.Configuration;
 
-public class RabbitMQConfig
+public class RabbitMqConfig
 {
     public string Host { get; set; }
     public int Port { get; set; }

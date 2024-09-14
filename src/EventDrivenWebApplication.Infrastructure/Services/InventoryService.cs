@@ -1,86 +1,110 @@
 ﻿using EventDrivenWebApplication.Domain.Entities;
+using EventDrivenWebApplication.Domain.Interfaces;
 using EventDrivenWebApplication.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventDrivenWebApplication.Infrastructure.Services;
 
+/// <summary>
+/// Service for managing inventory items.
+/// </summary>
 public class InventoryService : IInventoryService
 {
-    private readonly InventoryDbContext _dbContext;
+    private readonly InventoryDbContext _inventoryDbContext;
 
-    public InventoryService(InventoryDbContext dbContext)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InventoryService"/> class.
+    /// </summary>
+    /// <param name="inventoryDbContext">The inventory database context.</param>
+    public InventoryService(InventoryDbContext inventoryDbContext)
     {
-        _dbContext = dbContext;
+        _inventoryDbContext = inventoryDbContext;
     }
 
-    public async Task AddProductToInventoryIfNotExistsAsync(Guid productId, string productName)
+    /// <summary>
+    /// Adds a new inventory item.
+    /// </summary>
+    /// <param name="inventoryItem">The inventory item to add.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    public async Task AddInventoryItemAsync(InventoryItem inventoryItem, CancellationToken cancellationToken)
     {
-        InventoryItem? existingProduct = await _dbContext.InventoryItems
-            .FirstOrDefaultAsync(p => p.ProductId == productId);
-
-        if (existingProduct == null)
-        {
-            InventoryItem newInventoryItem = new InventoryItem
-            {
-                ProductId = productId,
-                Name = productName,
-                Quantity = 0
-            };
-            _dbContext.InventoryItems.Add(newInventoryItem);
-            await _dbContext.SaveChangesAsync();
-        }
+        _inventoryDbContext.InventoryItems.Add(inventoryItem);
+        await _inventoryDbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task UpdateInventoryAsync(Guid productId, int quantityChange, bool isChecked, DateTime? checkedAt)
+    /// <summary>
+    /// Updates the quality check status and last checked time for a given inventory item.
+    /// </summary>
+    /// <param name="inventoryItemId">The ID of the inventory item to update.</param>
+    /// <param name="isChecked">Indicates if the item has been quality checked.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    public async Task UpdateInventoryAsync(int inventoryItemId, bool isChecked, CancellationToken cancellationToken)
     {
-        InventoryItem? inventoryItem = await _dbContext.InventoryItems
-            .FirstOrDefaultAsync(p => p.ProductId == productId);
+        InventoryItem? inventoryItem = await _inventoryDbContext.InventoryItems
+            .FirstOrDefaultAsync(i => i.Id == inventoryItemId, cancellationToken);
 
         if (inventoryItem != null)
         {
-            inventoryItem.Quantity += quantityChange;
-            inventoryItem.IsChecked = isChecked;
-            inventoryItem.LastCheckedAt = checkedAt;
-
-            await _dbContext.SaveChangesAsync();
+            inventoryItem.QualityValidated = isChecked;
+            inventoryItem.DateTimeLastQualityChecked = DateTime.UtcNow;
+            await _inventoryDbContext.SaveChangesAsync(cancellationToken);
         }
     }
 
-    public async Task<IEnumerable<InventoryItem>> GetInventoryItemsAsync()
+    /// <summary>
+    /// Retrieves all inventory items.
+    /// </summary>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>A list of inventory items.</returns>
+    public async Task<IEnumerable<InventoryItem>> GetInventoryItemsAsync(CancellationToken cancellationToken)
     {
-        return await _dbContext.InventoryItems.ToListAsync();
+        return await _inventoryDbContext.InventoryItems.ToListAsync(cancellationToken);
     }
 
-    public async Task<InventoryItem?> GetInventoryItemAsync(Guid productId)
+    /// <summary>
+    /// Retrieves a single inventory item by its ID.
+    /// </summary>
+    /// <param name="inventoryItemId">The ID of the inventory item to retrieve.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>The matching inventory item, or null if not found.</returns>
+    public async Task<InventoryItem?> GetInventoryItemAsync(int inventoryItemId, CancellationToken cancellationToken)
     {
-        InventoryItem? inventoryItem = await _dbContext.InventoryItems
-            .FirstOrDefaultAsync(p => p.ProductId == productId);
-        return inventoryItem;
+        return await _inventoryDbContext.InventoryItems
+            .FirstOrDefaultAsync(i => i.Id == inventoryItemId, cancellationToken);
     }
 
-    public async Task MarkItemCheckedAsync(Guid productId)
+    /// <summary>
+    /// Marks an inventory item as checked.
+    /// </summary>
+    /// <param name="inventoryItemId">The ID of the inventory item to mark as checked.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    public async Task MarkItemCheckedAsync(int inventoryItemId, CancellationToken cancellationToken)
     {
-        InventoryItem? inventoryItem = await _dbContext.InventoryItems
-            .FirstOrDefaultAsync(p => p.ProductId == productId);
+        InventoryItem? inventoryItem = await _inventoryDbContext.InventoryItems
+            .FirstOrDefaultAsync(i => i.Id == inventoryItemId, cancellationToken);
+
         if (inventoryItem != null)
         {
-            inventoryItem.IsChecked = true;
-            inventoryItem.LastCheckedAt = DateTime.UtcNow;
+            inventoryItem.QualityValidated = true;
+            inventoryItem.DateTimeLastQualityChecked = DateTime.UtcNow;
+            await _inventoryDbContext.SaveChangesAsync(cancellationToken);
         }
-        await _dbContext.SaveChangesAsync();
     }
 
-    public async Task RecordInventoryCheckAsync(Guid productId, bool isAvailable, int totalUniqueItems, int totalQuantity)
+    /// <summary>
+    /// Deletes an inventory item by its ID.
+    /// </summary>
+    /// <param name="inventoryItemId">The ID of the inventory item to delete.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    public async Task DeleteInventoryItemAsync(int inventoryItemId, CancellationToken cancellationToken)
     {
-        InventoryCheckLog checkLog = new InventoryCheckLog
+        InventoryItem? inventoryItem = await _inventoryDbContext.InventoryItems
+            .FirstOrDefaultAsync(i => i.Id == inventoryItemId, cancellationToken);
+
+        if (inventoryItem != null)
         {
-            ProductId = productId,
-            TotalUniqueItems = totalUniqueItems,
-            TotalQuantity = totalQuantity,
-            IsAvailable = isAvailable,
-            CheckedAt = DateTime.UtcNow
-        };
-        _dbContext.InventoryCheckLogs.Add(checkLog);
-        await _dbContext.SaveChangesAsync();
+            _inventoryDbContext.InventoryItems.Remove(inventoryItem);
+            await _inventoryDbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 }
