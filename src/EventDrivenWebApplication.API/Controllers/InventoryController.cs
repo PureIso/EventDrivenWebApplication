@@ -55,7 +55,7 @@ namespace EventDrivenWebApplication.Api.Controllers
         {
             try
             {
-                InventoryItem? item = await _inventoryService.GetInventoryItemAsync(id, HttpContext.RequestAborted);
+                InventoryItem? item = await _inventoryService.GetInventoryItemUsingProductIdAsync(id, HttpContext.RequestAborted);
                 return Ok(item);
             }
             catch (KeyNotFoundException)

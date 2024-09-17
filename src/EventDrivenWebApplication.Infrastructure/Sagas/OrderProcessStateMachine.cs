@@ -1,155 +1,155 @@
 ﻿using EventDrivenWebApplication.Domain.Entities;
 using EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
 using MassTransit;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
+namespace EventDrivenWebApplication.Infrastructure.Sagas;
+
 /// <summary>
-/// State machine for processing orders in an event-driven system.
-/// Manages the order process through states including creation, inventory check request, and completion.
+/// State machine for processing orders, handling events related to product creation and inventory checks.
 /// </summary>
 public class OrderProcessStateMachine : MassTransitStateMachine<OrderProcessState>
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="OrderProcessStateMachine"/> class.
-    /// Configures the state machine to handle events and transitions between states.
-    /// </summary>
     public OrderProcessStateMachine()
     {
-        // Define the current state of the saga instance
         InstanceState(x => x.CurrentState);
 
-        // Define the events and their correlation
+        // Initialize state properties
+        WaitingForInventoryCheckRequest = State("WaitingForInventoryCheckRequest");
+        InventoryCheckRequestedState = State("InventoryCheckRequestedState");
+        Completed = State("Completed");
+
+        // Define events and their correlation by CorrelationId
         Event(() => ProductCreated, x => x.CorrelateById(context => context.Message.CorrelationId));
         Event(() => InventoryCheckRequested, x => x.CorrelateById(context => context.Message.CorrelationId));
         Event(() => InventoryCheckCompleted, x => x.CorrelateById(context => context.Message.CorrelationId));
 
-        // Initial state: handle ProductCreated event
+        // Define initial state transition
         Initially(
             When(ProductCreated)
-                .Then(context =>
-                {
-                    context.Saga.CorrelationId = context.Message.CorrelationId;
-                    context.Saga.ProductId = context.Message.ProductId;
-                    context.Saga.ProductName = context.Message.Name;
-                    context.Saga.ProductQuantity = context.Message.Quantity;
-                    context.Saga.Price = context.Message.Price;
-                    context.Saga.DateTimeProductCreated = context.Message.DateTimeCreated;
-                    Log.Information($"Transitioning to WaitingForInventoryCheckRequest ProductId: {context.Message.ProductId}");
-                })
+                .Then(context => context.Saga.PreviousState = context.Saga.CurrentState) // Capture PreviousState
+                .Then(ProcessProductCreated)
+                .ThenAsync(context => LogStateTransitionAsync(context, "ProductCreated event processed", "Exit"))
                 .TransitionTo(WaitingForInventoryCheckRequest),
-        When(InventoryCheckRequested)
-            .Then(context =>
-            {
-                // Handle logic for when an inventory check is requested
-                context.Saga.CorrelationId = context.Message.CorrelationId;
-                context.Saga.DateTimeInventoryCheckRequested = context.Message.DateTimeCreated;
-                Log.Information($"Received InventoryCheckRequested for ProductID: {context.Message.ProductId}. Transitioning to InventoryCheckRequestedState.");
-            })
-            .TransitionTo(InventoryCheckRequestedState),
-        When(InventoryCheckCompleted)
-            .Then(context =>
-            {
-                // Update the saga state with inventory availability and check details
-                context.Saga.CorrelationId = context.Message.CorrelationId;
-                context.Saga.IsQualityGood = context.Message.IsQualityGood;
-                context.Saga.DateTimeInventoryCheckCompleted = context.Message.DateTimeInventoryCompleted;
-                Log.Information($"InventoryCheckCompleted received for ProductID: {context.Message.ProductId}, IsQualityGood: {context.Message.IsQualityGood}. Transitioning to Completed state.");
-            })
-            // Transition to the completed state when inventory check is done
-            .TransitionTo(Completed)
+
+            When(InventoryCheckRequested)
+                .Then(context => LogWarning(context, "InventoryCheckRequested received but no ProductCreated event has been processed."))
         );
 
-        // Handle ProductCreated if received again (out of order or duplicate)
+        // Define state transitions during WaitingForInventoryCheckRequest state
         During(WaitingForInventoryCheckRequest,
             When(ProductCreated)
-                .Then(context =>
-                {
-                    Log.Warning($"Duplicate or out-of-order ProductCreated event ignored. ProductID: {context.Message.ProductId}, CurrentState: {context.Saga.CurrentState}");
-                })
-        );
+                .Then(context => LogWarning(context, "Duplicate or out-of-order ProductCreated event ignored.")),
 
-        // InventoryCheckRequested can only be handled when in the WaitingForInventoryCheckRequest state
-        During(WaitingForInventoryCheckRequest,
             When(InventoryCheckRequested)
-                .Then(context =>
-                {
-                    // Handle logic for when an inventory check is requested
-                    context.Saga.CorrelationId = context.Message.CorrelationId;
-                    context.Saga.DateTimeInventoryCheckRequested = context.Message.DateTimeCreated;
-                    Log.Information($"Received InventoryCheckRequested for ProductID: {context.Message.ProductId}. Transitioning to InventoryCheckRequestedState.");
-                })
-                .TransitionTo(InventoryCheckRequestedState) // Transition to the state where the inventory check is happening
-        );
+                .Then(context => context.Saga.PreviousState = context.Saga.CurrentState) // Capture PreviousState
+                .Then(ProcessInventoryCheckRequested)
+                .ThenAsync(context => LogStateTransitionAsync(context, "InventoryCheckRequested event processed", "Exit"))
+                .TransitionTo(InventoryCheckRequestedState),
 
-        // Handle duplicate or out-of-order InventoryCheckRequested in the wrong state
-        During(InventoryCheckRequestedState,
-            When(InventoryCheckRequested)
-                .Then(context =>
-                {
-                    Log.Warning($"Duplicate or out-of-order InventoryCheckRequested event ignored. ProductID: {context.Message.ProductId}, CurrentState: {context.Saga.CurrentState}");
-                })
-        );
-
-        // Handle the InventoryCheckCompleted event in the correct state
-        During(InventoryCheckRequestedState,
             When(InventoryCheckCompleted)
-                .Then(context =>
-                {
-                    // Update the saga state with inventory availability and check details
-                    context.Saga.CorrelationId = context.Message.CorrelationId;
-                    context.Saga.IsQualityGood = context.Message.IsQualityGood;
-                    context.Saga.DateTimeInventoryCheckCompleted = context.Message.DateTimeInventoryCompleted;
-                    Log.Information($"InventoryCheckCompleted received for ProductID: {context.Message.ProductId}, IsQualityGood: {context.Message.IsQualityGood}. Transitioning to Completed state.");
-                })
-                // Transition to the completed state when inventory check is done
+                .Then(context => LogWarning(context, "Out-of-order InventoryCheckCompleted event ignored."))
+        );
+
+        // Define state transitions during InventoryCheckRequestedState state
+        During(InventoryCheckRequestedState,
+            When(ProductCreated)
+                .Then(context => LogWarning(context, "Duplicate or out-of-order ProductCreated event ignored.")),
+
+            When(InventoryCheckRequested)
+                .Then(context => LogWarning(context, "Duplicate or out-of-order InventoryCheckRequested event ignored.")),
+
+            When(InventoryCheckCompleted)
+                .Then(context => context.Saga.PreviousState = context.Saga.CurrentState) // Capture PreviousState
+                .Then(ProcessInventoryCheckCompleted)
+                .ThenAsync(context => LogStateTransitionAsync(context, "InventoryCheckCompleted event processed", "Exit"))
                 .TransitionTo(Completed)
         );
 
-        // If InventoryCheckCompleted is received out of order, log a warning
+        // Handle out-of-order InventoryCheckCompleted during WaitingForInventoryCheckRequest
         During(WaitingForInventoryCheckRequest,
             When(InventoryCheckCompleted)
-                .Then(context =>
-                {
-                    Log.Warning($"Out-of-order InventoryCheckCompleted event ignored. ProductID: {context.Message.ProductId}, CurrentState: {context.Saga.CurrentState}");
-                })
+                .Then(context => LogWarning(context, "Out-of-order InventoryCheckCompleted event ignored."))
         );
 
-        // Mark the saga as completed when in the final state
+        // Mark the saga as completed when it reaches the final state
         SetCompletedWhenFinalized();
     }
 
-    /// <summary>
-    /// Gets the state representing the creation of the order.
-    /// </summary>
-    public State CreatedState { get; private set; }
+    // Method to process ProductCreated event
+    private async void ProcessProductCreated(BehaviorContext<OrderProcessState, ProductCreatedMessage> context)
+    {
+        await LogStateTransitionAsync(context, "ProductCreated event processed", "Entry");
 
-    /// <summary>
-    /// Gets the state representing waiting for an inventory check request.
-    /// </summary>
-    public State WaitingForInventoryCheckRequest { get; private set; }
+        context.Saga.CorrelationId = context.Message.CorrelationId;
+        context.Saga.ProductId = context.Message.ProductId;
+        context.Saga.ProductName = context.Message.Name;
+        context.Saga.ProductQuantity = context.Message.Quantity;
+        context.Saga.Price = context.Message.Price;
+        context.Saga.DateTimeProductCreated = context.Message.DateTimeCreated;
 
-    /// <summary>
-    /// Gets the state representing that an inventory check has been requested.
-    /// </summary>
-    public State InventoryCheckRequestedState { get; private set; }
+        Log.Information($"ProductCreated event processed for ProductId: {context.Message.ProductId}. Transitioning to WaitingForInventoryCheckRequest.");
+    }
 
-    /// <summary>
-    /// Gets the state representing the completion of the order process.
-    /// </summary>
-    public State Completed { get; private set; }
+    // Method to process InventoryCheckRequested event
+    private async void ProcessInventoryCheckRequested(BehaviorContext<OrderProcessState, InventoryCheckRequested> context)
+    {
+        await LogStateTransitionAsync(context, "InventoryCheckRequested event processed", "Entry");
 
-    /// <summary>
-    /// Gets the event for when a product is created.
-    /// </summary>
-    public Event<ProductCreatedMessage> ProductCreated { get; private set; }
+        context.Saga.CorrelationId = context.Message.CorrelationId;
+        context.Saga.DateTimeInventoryCheckRequested = context.Message.DateTimeCreated;
 
-    /// <summary>
-    /// Gets the event for when an inventory check is requested.
-    /// </summary>
-    public Event<InventoryCheckRequested> InventoryCheckRequested { get; private set; }
+        Log.Information($"InventoryCheckRequested event processed for ProductID: {context.Message.ProductId}. Transitioning to InventoryCheckRequestedState.");
+    }
 
-    /// <summary>
-    /// Gets the event for when an inventory check is completed.
-    /// </summary>
-    public Event<InventoryCheckCompleted> InventoryCheckCompleted { get; private set; }
+    // Method to process InventoryCheckCompleted event
+    private async void ProcessInventoryCheckCompleted(BehaviorContext<OrderProcessState, InventoryCheckCompleted> context)
+    {
+        await LogStateTransitionAsync(context, "InventoryCheckCompleted event processed", "Entry");
+
+        context.Saga.CorrelationId = context.Message.CorrelationId;
+        context.Saga.IsQualityGood = context.Message.IsQualityGood;
+        context.Saga.DateTimeInventoryCheckCompleted = context.Message.DateTimeInventoryCompleted;
+
+        Log.Information($"InventoryCheckCompleted event processed for ProductID: {context.Message.ProductId}. Transitioning to Completed.");
+    }
+
+    // Method to log state transition
+    private async Task LogStateTransitionAsync<TEvent>(BehaviorContext<OrderProcessState, TEvent> context, string description, string entryOrExit)
+        where TEvent : class
+    {
+        using IServiceScope scope = context.GetPayload<IServiceScopeFactory>().CreateScope();
+        OrderSagaDbContext dbContext = scope.ServiceProvider.GetRequiredService<OrderSagaDbContext>();
+
+        OrderProcessStateHistory historyEntry = new OrderProcessStateHistory
+        {
+            CorrelationId = context.Saga.CorrelationId,
+            PreviousState = context.Saga.PreviousState,  // Set previous state
+            CurrentState = context.Saga.CurrentState,    // Set current state
+            TransitionedAt = DateTime.UtcNow,
+            Description = $"{description} - {entryOrExit}"
+        };
+
+        dbContext.OrderProcessStateHistories.Add(historyEntry);
+        await dbContext.SaveChangesAsync();
+    }
+
+    // Method to log warnings
+    private void LogWarning<TEvent>(BehaviorContext<OrderProcessState, TEvent> context, string message)
+        where TEvent : class
+    {
+        string productId = context.Saga.ProductId != 0 ? context.Saga.ProductId.ToString() : "Unknown";
+        Log.Warning($"{message} ProductID: {productId}, CurrentState: {context.Saga.CurrentState}");
+    }
+
+    // Define state properties
+    private State WaitingForInventoryCheckRequest { get; set; }
+    private State InventoryCheckRequestedState { get; set; }
+    private State Completed { get; set; }
+
+    // Define event properties
+    private Event<ProductCreatedMessage> ProductCreated { get; set; } = null!;
+    private Event<InventoryCheckRequested> InventoryCheckRequested { get; set; } = null!;
+    private Event<InventoryCheckCompleted> InventoryCheckCompleted { get; set; } = null!;
 }

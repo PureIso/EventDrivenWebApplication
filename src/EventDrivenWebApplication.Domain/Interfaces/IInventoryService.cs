@@ -35,7 +35,7 @@ public interface IInventoryService
     /// <param name="inventoryItemId">The ID of the inventory item to retrieve.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>The matching inventory item, or null if not found.</returns>
-    Task<InventoryItem?> GetInventoryItemAsync(int inventoryItemId, CancellationToken cancellationToken);
+    Task<InventoryItem?> GetInventoryItemUsingProductIdAsync(int inventoryItemId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Marks an inventory item as checked.

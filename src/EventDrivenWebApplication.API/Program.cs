@@ -11,6 +11,7 @@ using Asp.Versioning;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using EventDrivenWebApplication.Domain.Entities;
+using EventDrivenWebApplication.Infrastructure.Sagas;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 
@@ -56,7 +57,9 @@ builder.Services.AddApiVersioning(options =>
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
-builder.Services.AddScoped<ISagaManagementService, SagaManagementService>();
+builder.Services.AddScoped<IOrderProcessStateService, OrderProcessStateService>();
+//builder.Services.AddScoped<ISagaManagementService, SagaManagementService>();
+//builder.Services.AddScoped<OrderProcessStateMachine>();
 
 
 // Register the database contexts
@@ -89,9 +92,8 @@ if (rabbitMqConfig != null)
         options.AddSagaStateMachine<OrderProcessStateMachine, OrderProcessState>()
             .EntityFrameworkRepository(r =>
             {
-                r.ConcurrencyMode = ConcurrencyMode.Pessimistic;
-                r.ExistingDbContext<OrderSagaDbContext>(); // Ensure this points to the correct DbContext
-                r.UseSqlServer(); // Use SQL Server for saga persistence
+                r.ExistingDbContext<OrderSagaDbContext>();
+                r.UseSqlServer();
             });
 
         // RabbitMQ configuration

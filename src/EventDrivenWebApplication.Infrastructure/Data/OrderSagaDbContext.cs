@@ -1,18 +1,34 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using EventDrivenWebApplication.Domain.Entities;
 
-namespace EventDrivenWebApplication.Infrastructure.Data;
-
+/// <summary>
+/// Represents the database context for managing order saga states and their history.
+/// </summary>
 public class OrderSagaDbContext : DbContext
 {
-    // Inject state machine and DbContext options
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OrderSagaDbContext"/> class.
+    /// </summary>
+    /// <param name="options">The options to be used by the <see cref="DbContext"/>.</param>
     public OrderSagaDbContext(DbContextOptions<OrderSagaDbContext> options)
         : base(options)
     {
     }
 
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{OrderProcessState}"/> representing the order process states.
+    /// </summary>
     public DbSet<OrderProcessState> OrderProcessStates { get; set; } = default!;
 
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{OrderProcessStateHistory}"/> representing the order process state history.
+    /// </summary>
+    public DbSet<OrderProcessStateHistory> OrderProcessStateHistories { get; set; } = default!;
+
+    /// <summary>
+    /// Configures the entity mappings and relationships for the context.
+    /// </summary>
+    /// <param name="modelBuilder">The <see cref="ModelBuilder"/> used to configure the model.</param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -23,7 +39,6 @@ public class OrderSagaDbContext : DbContext
 
             entity.HasKey(x => x.CorrelationId);
 
-            // Map saga properties
             entity.Property(x => x.CorrelationId)
                 .IsRequired();
 
@@ -56,13 +71,35 @@ public class OrderSagaDbContext : DbContext
                 .IsRequired()
                 .HasColumnType("datetime");
 
-            // Store CurrentState as an integer
             entity.Property(x => x.CurrentState)
                 .IsRequired();
 
-            // Configure RowVersion for concurrency control
             entity.Property(x => x.RowVersion)
                 .IsRowVersion();
+        });
+
+        modelBuilder.Entity<OrderProcessStateHistory>(entity =>
+        {
+            entity.ToTable("OrderProcessStateHistories");
+
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.CorrelationId)
+                .IsRequired();
+
+            entity.Property(x => x.PreviousState)
+                .IsRequired();
+
+            entity.Property(x => x.CurrentState)
+                .IsRequired();
+
+            entity.Property(x => x.TransitionedAt)
+                .IsRequired()
+                .HasColumnType("datetime");
+
+            entity.Property(x => x.Description)
+                .IsRequired()
+                .HasMaxLength(500);
         });
     }
 }

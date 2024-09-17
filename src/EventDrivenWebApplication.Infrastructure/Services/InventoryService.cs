@@ -64,13 +64,13 @@ public class InventoryService : IInventoryService
     /// <summary>
     /// Retrieves a single inventory item by its ID.
     /// </summary>
-    /// <param name="inventoryItemId">The ID of the inventory item to retrieve.</param>
+    /// <param name="productId">The ID of the inventory item to retrieve.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>The matching inventory item, or null if not found.</returns>
-    public async Task<InventoryItem?> GetInventoryItemAsync(int inventoryItemId, CancellationToken cancellationToken)
+    public async Task<InventoryItem?> GetInventoryItemUsingProductIdAsync(int productId, CancellationToken cancellationToken)
     {
         return await _inventoryDbContext.InventoryItems
-            .FirstOrDefaultAsync(i => i.Id == inventoryItemId, cancellationToken);
+            .FirstOrDefaultAsync(i => i.ProductId == productId, cancellationToken);
     }
 
     /// <summary>
