@@ -1,6 +1,7 @@
 ﻿using EventDrivenWebApplication.Domain.Entities;
 using EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
 using MassTransit;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -35,6 +36,7 @@ public class OrderProcessStateMachine : MassTransitStateMachine<OrderProcessStat
                 {
                     context.Saga.PreviousState = context.Saga.CurrentState;
                     await ProcessProductCreated(context);
+                    MarkSagaAsModified(context);
                     await LogStateTransitionAsync(context, "ProductCreated event processed", "Exit");
                 })
                 .TransitionTo(WaitingForInventoryCheckRequest),
@@ -56,6 +58,7 @@ public class OrderProcessStateMachine : MassTransitStateMachine<OrderProcessStat
                 {
                     context.Saga.PreviousState = context.Saga.CurrentState;
                     await ProcessInventoryCheckRequested(context);
+                    MarkSagaAsModified(context);
                     await LogStateTransitionAsync(context, "InventoryCheckRequested event processed", "Exit");
                 })
                 .TransitionTo(InventoryCheckRequestedState),
@@ -77,6 +80,7 @@ public class OrderProcessStateMachine : MassTransitStateMachine<OrderProcessStat
                 {
                     context.Saga.PreviousState = context.Saga.CurrentState;
                     await ProcessInventoryCheckCompleted(context);
+                    MarkSagaAsModified(context);
                     await LogStateTransitionAsync(context, "InventoryCheckCompleted event processed", "Exit");
                 })
                 .Finalize()
@@ -182,6 +186,19 @@ public class OrderProcessStateMachine : MassTransitStateMachine<OrderProcessStat
             Log.Error(ex, "Error saving state transition");
             throw;
         }
+    }
+
+    /// <summary>
+    /// Marks the saga state as modified to ensure it's persisted. (Optional)
+    /// </summary>
+    private void MarkSagaAsModified<T>(BehaviorContext<OrderProcessState, T> context) where T : class
+    {
+        // Create a service scope to resolve OrderSagaDbContext
+        using IServiceScope scope = context.GetPayload<IServiceScopeFactory>().CreateScope();
+        OrderSagaDbContext dbContext = scope.ServiceProvider.GetRequiredService<OrderSagaDbContext>();
+
+        // Mark the saga as modified
+        dbContext.Entry(context.Saga).State = EntityState.Modified;
     }
 
     // Define state properties

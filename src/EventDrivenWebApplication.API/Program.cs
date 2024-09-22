@@ -58,9 +58,6 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IOrderProcessStateService, OrderProcessStateService>();
-//builder.Services.AddScoped<ISagaManagementService, SagaManagementService>();
-//builder.Services.AddScoped<OrderProcessStateMachine>();
-
 
 // Register the database contexts
 builder.Services.AddDbContext<ProductDbContext>(options =>

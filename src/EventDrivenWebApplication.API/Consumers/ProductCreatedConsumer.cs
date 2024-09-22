@@ -38,44 +38,23 @@ public class ProductCreatedConsumer : IConsumer<ProductCreatedMessage>
         {
             _logger.LogInformation("Received ProductCreatedMessage: {ProductId}, {Name}, {Quantity}", message.ProductId, message.Name, message.Quantity);
 
-            int retryCount = 0;
-            int maxRetries = 5;
-            TimeSpan retryDelay = TimeSpan.FromSeconds(5);
+            // Retry logic to wait for the correct saga state
+            bool isSagaReady = await RetryUntilSagaStateAsync(
+                message.CorrelationId,
+                "Initial",
+                "WaitingForInventoryCheckRequest",
+                maxRetries: 5,
+                initialRetryDelay: TimeSpan.FromMilliseconds(200),
+                cancellationToken: cancellationToken
+            );
 
-            // Retry logic: wait for the saga to transition to the 'WaitingForInventoryCheckRequest' state
-            while (retryCount < maxRetries)
+            if (!isSagaReady)
             {
-                OrderProcessState? orderProcessState =
-                    await _orderProcessStateService.GetOrderProcessStateAsync(message.CorrelationId, cancellationToken);
-                if (orderProcessState == null)
-                {
-                    retryCount++;
-                    // Wait before retrying
-                    await Task.Delay(retryDelay, cancellationToken);
-                    continue;
-                }
-                if (orderProcessState.PreviousState == "Initial" &&
-                    orderProcessState.CurrentState == "WaitingForInventoryCheckRequest")
-                {
-                    _logger.LogInformation("Saga reached the 'Initial' state. Proceeding.");
-                    break;
-                }
-
-                retryCount++;
-                _logger.LogInformation("Waiting for saga to reach 'Initial' state. Retry attempt: {RetryCount}", retryCount);
-
-                // Wait before retrying
-                await Task.Delay(retryDelay, cancellationToken);
-            }
-
-            // If the saga is still not in the correct state, log and exit
-            if (retryCount == maxRetries)
-            {
-                _logger.LogWarning("Saga did not transition to 'Initial' state after {MaxRetries} retries. Exiting.", maxRetries);
+                _logger.LogWarning("Saga did not transition to 'Initial' state after maximum retries. Exiting.");
                 return;
             }
 
-            // Now the saga is in the correct state, proceed with publishing the InventoryCheckRequested message
+            // Proceed with publishing the InventoryCheckRequested message
             InventoryCheckRequested inventoryCheckRequested = new InventoryCheckRequested
             {
                 CorrelationId = message.CorrelationId,
@@ -93,12 +72,55 @@ public class ProductCreatedConsumer : IConsumer<ProductCreatedMessage>
         catch (OperationCanceledException)
         {
             _logger.LogWarning("Operation was canceled during the processing of ProductCreatedMessage: {ProductId}", message.ProductId);
-            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing ProductCreatedMessage: {ProductId}", message.ProductId);
-            throw;
         }
+    }
+
+    /// <summary>
+    /// Retries the saga state check with incremental delays until it reaches the specified state or max retries.
+    /// </summary>
+    /// <param name="correlationId">The saga's correlation ID.</param>
+    /// <param name="previousState">The previous state to check for.</param>
+    /// <param name="currentState">The current state to check for.</param>
+    /// <param name="maxRetries">The maximum number of retries.</param>
+    /// <param name="initialRetryDelay">The initial delay between retries.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the saga reaches the desired state, otherwise false.</returns>
+    private async Task<bool> RetryUntilSagaStateAsync(
+        Guid correlationId,
+        string previousState,
+        string currentState,
+        int maxRetries,
+        TimeSpan initialRetryDelay,
+        CancellationToken cancellationToken)
+    {
+        int retryCount = 0;
+        TimeSpan retryDelay = initialRetryDelay;
+
+        while (retryCount < maxRetries)
+        {
+            OrderProcessState? orderProcessState =
+                await _orderProcessStateService.GetOrderProcessStateAsync(correlationId, cancellationToken);
+
+            if (orderProcessState != null &&
+                orderProcessState.PreviousState == previousState &&
+                orderProcessState.CurrentState == currentState)
+            {
+                _logger.LogInformation("Saga reached the '{PreviousState}' state. Proceeding.", previousState);
+                return true;
+            }
+
+            retryCount++;
+            _logger.LogInformation("Waiting for saga to reach '{PreviousState}' state. Retry attempt: {RetryCount}", previousState, retryCount);
+
+            // Incremental retry delay
+            await Task.Delay(retryDelay, cancellationToken);
+            retryDelay += TimeSpan.FromMilliseconds(200);
+        }
+
+        return false;
     }
 }
