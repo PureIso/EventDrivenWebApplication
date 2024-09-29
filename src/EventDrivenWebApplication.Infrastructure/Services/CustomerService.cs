@@ -1,7 +1,7 @@
 ﻿using EventDrivenWebApplication.Domain.Entities;
 using EventDrivenWebApplication.Domain.Interfaces;
+using EventDrivenWebApplication.Domain.Messages;
 using EventDrivenWebApplication.Infrastructure.Data;
-using EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 

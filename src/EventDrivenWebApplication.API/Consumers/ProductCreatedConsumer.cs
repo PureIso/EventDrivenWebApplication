@@ -1,7 +1,7 @@
-﻿using EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
-using MassTransit;
+﻿using MassTransit;
 using EventDrivenWebApplication.Domain.Interfaces;
 using EventDrivenWebApplication.Domain.Entities;
+using EventDrivenWebApplication.Domain.Messages;
 
 namespace EventDrivenWebApplication.API.Consumers;
 
@@ -36,6 +36,13 @@ public class ProductCreatedConsumer : IConsumer<ProductCreatedMessage>
 
         try
         {
+            //// Send to NiFi via HTTP
+            //using (HttpClient httpClient = new HttpClient())
+            //{
+            //    HttpResponseMessage response = await httpClient.PostAsJsonAsync("http://localhost:8082/process-data", message);
+            //    response.EnsureSuccessStatusCode();
+            //}
+
             _logger.LogInformation("Received ProductCreatedMessage: {ProductId}, {Name}, {Quantity}", message.ProductId, message.Name, message.Quantity);
 
             // Retry logic to wait for the correct saga state

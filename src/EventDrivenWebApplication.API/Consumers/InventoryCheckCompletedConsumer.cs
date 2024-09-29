@@ -1,7 +1,7 @@
 ﻿using EventDrivenWebApplication.Domain.Entities;
 using EventDrivenWebApplication.Domain.Interfaces;
 using MassTransit;
-using EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
+using EventDrivenWebApplication.Domain.Messages;
 
 namespace EventDrivenWebApplication.API.Consumers;
 

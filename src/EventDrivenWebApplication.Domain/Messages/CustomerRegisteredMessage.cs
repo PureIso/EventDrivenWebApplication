@@ -1,4 +1,4 @@
-﻿namespace EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
+﻿namespace EventDrivenWebApplication.Domain.Messages;
 
 /// <summary>
 /// Represents a message indicating that a customer has been registered.

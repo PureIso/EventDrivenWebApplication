@@ -1,4 +1,4 @@
-﻿namespace EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
+﻿namespace EventDrivenWebApplication.Domain.Messages;
 
 /// <summary>
 /// Represents the event that indicates the creation of a new product.

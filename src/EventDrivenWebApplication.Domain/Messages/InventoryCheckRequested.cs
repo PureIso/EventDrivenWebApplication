@@ -1,4 +1,4 @@
-﻿namespace EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
+﻿namespace EventDrivenWebApplication.Domain.Messages;
 
 /// <summary>
 /// Represents the event that requests an inventory check for a product.

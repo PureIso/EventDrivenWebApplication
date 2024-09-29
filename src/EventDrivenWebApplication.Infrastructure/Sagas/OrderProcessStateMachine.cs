@@ -1,5 +1,5 @@
 ﻿using EventDrivenWebApplication.Domain.Entities;
-using EventDrivenWebApplication.Infrastructure.Messaging.Contracts;
+using EventDrivenWebApplication.Domain.Messages;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
