@@ -1,0 +1,56 @@
+{
+    "UserConfig": {
+        "Namespaces": [
+            {
+                "Name": "EventDrivenNamespace",
+                "Queues": [
+                    {
+                        "Name": "product-created-queue",
+                        "Properties": {
+                            "DeadLetteringOnMessageExpiration": false,
+                            "DefaultMessageTimeToLive": "PT1H",
+                            "LockDuration": "PT1M",
+                            "MaxDeliveryCount": 10,
+                            "RequiresSession": false
+                        }
+                    },
+                    {
+                        "Name": "inventory-check-requested-queue",
+                        "Properties": {
+                            "DeadLetteringOnMessageExpiration": false,
+                            "DefaultMessageTimeToLive": "PT1H",
+                            "LockDuration": "PT1M",
+                            "MaxDeliveryCount": 10,
+                            "RequiresSession": false
+                        }
+                    },
+                    {
+                        "Name": "inventory-check-completed-queue",
+                        "Properties": {
+                            "DeadLetteringOnMessageExpiration": false,
+                            "DefaultMessageTimeToLive": "PT1H",
+                            "LockDuration": "PT1M",
+                            "MaxDeliveryCount": 10,
+                            "RequiresSession": false
+                        }
+                    },
+                    {
+                        "Name": "order-process-saga",
+                        "Properties": {
+                            "DeadLetteringOnMessageExpiration": false,
+                            "DefaultMessageTimeToLive": "PT1H",
+                            "LockDuration": "PT1M",
+                            "MaxDeliveryCount": 10,
+                            "RequiresSession": false
+                        }
+                    }
+                ],
+                "Topics": [],
+                "Subscriptions": []
+            }
+        ],
+        "Logging": {
+            "Type": "File"
+        }
+    }
+}
