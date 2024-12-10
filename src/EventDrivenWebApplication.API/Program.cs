@@ -72,28 +72,27 @@ builder.Services.AddDbContext<InventoryDbContext>(options =>
 builder.Services.AddDbContext<OrderSagaDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("OrderSagaStateDb")));
 
-RabbitMqConfig? rabbitMqConfig = builder.Configuration.GetSection("MassTransit:RabbitMQ").Get<RabbitMqConfig>();
-if (rabbitMqConfig != null)
+string? transport = builder.Configuration.GetSection("MassTransit:Transport").Value;
+
+builder.Services.AddMassTransit(options =>
 {
-    builder.Services.AddMassTransit(options =>
+    options.SetKebabCaseEndpointNameFormatter();
+
+    // Add consumers for the events
+    options.AddConsumer<ProductCreatedConsumer>();
+    options.AddConsumer<InventoryCheckRequestedConsumer>();
+    options.AddConsumer<InventoryCheckCompletedConsumer>();
+
+    // Configure the Saga state machine
+    options.AddSagaStateMachine<OrderProcessStateMachine, OrderProcessState>()
+        .EntityFrameworkRepository(r =>
+        {
+            r.ExistingDbContext<OrderSagaDbContext>();
+            r.UseSqlServer();
+        });
+    if (transport == "RabbitMQ")
     {
-        // Use KebabCase for endpoint names
-        options.SetKebabCaseEndpointNameFormatter();
-
-        // Add consumers for the events
-        options.AddConsumer<ProductCreatedConsumer>();
-        options.AddConsumer<InventoryCheckRequestedConsumer>();
-        options.AddConsumer<InventoryCheckCompletedConsumer>();
-
-        // Configure the Saga state machine
-        options.AddSagaStateMachine<OrderProcessStateMachine, OrderProcessState>()
-            .EntityFrameworkRepository(r =>
-            {
-                r.ExistingDbContext<OrderSagaDbContext>();
-                r.UseSqlServer();
-            });
-
-        // RabbitMQ configuration
+        RabbitMqConfig? rabbitMqConfig = builder.Configuration.GetSection("MassTransit:RabbitMQ").Get<RabbitMqConfig>();
         options.UsingRabbitMq((context, config) =>
         {
             config.Host(new Uri($"rabbitmq://{rabbitMqConfig.Host}:{rabbitMqConfig.Port}/"), hostConfig =>
@@ -107,25 +106,51 @@ if (rabbitMqConfig != null)
             {
                 e.ConfigureConsumer<ProductCreatedConsumer>(context);
             });
-
             config.ReceiveEndpoint("inventory-check-requested-queue", e =>
             {
                 e.ConfigureConsumer<InventoryCheckRequestedConsumer>(context);
             });
-
             config.ReceiveEndpoint("inventory-check-completed-queue", e =>
             {
                 e.ConfigureConsumer<InventoryCheckCompletedConsumer>(context);
             });
-
-            // Configure saga state machine endpoint
             config.ReceiveEndpoint("order-process-saga", e =>
             {
                 e.ConfigureSaga<OrderProcessState>(context);
             });
         });
-    });
-}
+    }
+    else if (transport == "AzureServiceBus")
+    {
+        AzureServiceBusConfig? azureServiceBusConfig = builder.Configuration.GetSection("MassTransit:AzureServiceBus").Get<AzureServiceBusConfig>();
+        options.UsingAzureServiceBus((context, config) =>
+        {
+            config.Host(azureServiceBusConfig.ConnectionString);
+
+            // Configure consumers and queues
+            config.ReceiveEndpoint("product-created-queue", e =>
+            {
+                e.ConfigureConsumer<ProductCreatedConsumer>(context);
+            });
+            config.ReceiveEndpoint("inventory-check-requested-queue", e =>
+            {
+                e.ConfigureConsumer<InventoryCheckRequestedConsumer>(context);
+            });
+            config.ReceiveEndpoint("inventory-check-completed-queue", e =>
+            {
+                e.ConfigureConsumer<InventoryCheckCompletedConsumer>(context);
+            });
+            config.ReceiveEndpoint("order-process-saga", e =>
+            {
+                e.ConfigureSaga<OrderProcessState>(context);
+            });
+        });
+    }
+    else
+    {
+        throw new InvalidOperationException($"Unsupported transport type: {transport}");
+    }
+});
 
 
 // Add Swagger for API documentation
