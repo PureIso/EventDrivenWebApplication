@@ -41,6 +41,8 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    expose:
+      - "5672"
     networks:
       - app-network
 
@@ -63,11 +65,13 @@ services:
     volumes:
       - "../config/config.json:/ServiceBus_Emulator/ConfigFiles/Config.json"
     ports:
-      - "5671:5671" # Optional for AMQP protocol
-      - "5673:5672" # Map host port 5673 to container port 5672 for AMQP
-      - "8083:8080" # Changed host port to 8083
+      - "5671:5671"
+      - "5673:5672"
+      - "8083:8080"
+    expose:
+      - "5672"
     environment:
-      ACCEPT_EULA: "Y" # Accept the EULA
+      ACCEPT_EULA: "Y"
       SQL_SERVER: sqlserver  
       MSSQL_SA_PASSWORD: YourStr0ngP@ssw0rd!
       SqlServer: "Server=sqlserver,1433;Database=ProductDb;User Id=sa;Password=YourStr0ngP@ssw0rd!;TrustServerCertificate=True;"
