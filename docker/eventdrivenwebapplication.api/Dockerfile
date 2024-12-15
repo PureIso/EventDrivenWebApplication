@@ -4,6 +4,7 @@ EXPOSE 8080
 EXPOSE 8081
 EXPOSE 1433
 EXPOSE 5672
+EXPOSE 5673
 
 # Install OpenSSL
 RUN apt-get update && apt-get install -y openssl
